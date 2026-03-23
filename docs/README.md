@@ -21,17 +21,17 @@ SQL_PROJECT/
 - `data/processed/rejected_logs.csv` - Rejected log export (header + data)
 - `dashboard/performance_monitoring.pbix` - Power BI dashboard file
 - `dashboard/powerbi_screenshot.png` - Dashboard snapshot
-- `sql/schema.sql` - Database schema and indexes
-- `sql/reset.sql` - Full data reset (truncate generated data)
-- `sql/views.sql` - Reusable cleaned view for analytics
-- `sql/basic.sql` - Basic analytics queries
-- `sql/kpi.sql` - KPI and ETL quality queries
-- `sql/advanced.sql` - Advanced analytics queries
-- `sql/dashboard.sql` - Final dashboard output queries
-- `sql/run.sql` - Main SQL runner
-- `sql/future/ops.sql` - Optional operational automation script
-- `sql/future/proof.sql` - Archived production proof script
-- `sql/future/run.sql` - Future-layer runner
+- `sql/00_schema.sql` - Database schema and indexes
+- `sql/07_reset.sql` - Full data reset (truncate generated data)
+- `sql/03_views.sql` - Reusable cleaned view for analytics
+- `sql/01_basic.sql` - Basic analytics queries
+- `sql/02_kpi.sql` - KPI and ETL quality queries
+- `sql/04_advanced.sql` - Advanced analytics queries
+- `sql/05_dashboard.sql` - Final dashboard output queries
+- `sql/06_run.sql` - Main SQL runner
+- `sql/future/00_ops.sql` - Optional operational automation script
+- `sql/future/01_proof.sql` - Archived production proof script
+- `sql/future/02_run.sql` - Future-layer runner
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ pip install pandas mysql-connector-python
 2. Run schema setup:
 
 ```sql
-source sql/schema.sql;
+source sql/00_schema.sql;
 ```
 
 This creates:
@@ -90,19 +90,19 @@ Stop with `CTRL+C` for clean shutdown and buffer flush.
 
 Run in this order:
 
-1. `sql/reset.sql` (optional, for clean run)
-2. `sql/views.sql`
-3. `sql/kpi.sql`
-4. `sql/dashboard.sql`
-5. `sql/future/ops.sql` (optional)
+1. `sql/07_reset.sql` (optional, for clean run)
+2. `sql/03_views.sql`
+3. `sql/02_kpi.sql`
+4. `sql/05_dashboard.sql`
+5. `sql/future/00_ops.sql` (optional)
 
 Final dashboard feeds:
 
-- `sql/dashboard.sql`
+- `sql/05_dashboard.sql`
 
 Or run all scripts:
 
-- `sql/run.sql` (for mysql CLI / MySQL Shell where `SOURCE` is supported)
+- `sql/06_run.sql` (for mysql CLI / MySQL Shell where `SOURCE` is supported)
 
 Important:
 - `SOURCE` is a mysql-client command, not server-side SQL.
@@ -112,7 +112,7 @@ Important:
 
 Run this final checklist in MySQL Workbench before publishing:
 
-- `sql/views.sql` executes successfully
+- `sql/03_views.sql` executes successfully
 - Analytics scripts execute with no SQL errors
 
 Expected checks:
@@ -125,7 +125,7 @@ Expected checks:
 - CSV headers are auto-ensured in simulator startup.
 - Analytics files are split for clarity and ordered execution.
 - Analytics latency outputs are standardized in seconds.
-- If you run `sql/reset.sql`, stop the simulator first and restart it after reset.
+- If you run `sql/07_reset.sql`, stop the simulator first and restart it after reset.
 - Main branch is configured for the active GitHub repository.
 
 ## Sample Output

@@ -1,10 +1,5 @@
 USE performance_monitoring;
 
--- =============================================================================
--- REUSABLE VIEW LAYER
--- =============================================================================
-
--- Centralized cleaned log view used by all analytics files.
 CREATE OR REPLACE VIEW vw_system_logs_clean AS
 SELECT
     id,

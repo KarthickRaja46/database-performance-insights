@@ -1,10 +1,6 @@
 USE performance_monitoring;
 
--- =============================================================================
--- MASTER DASHBOARD OUTPUTS (FINAL FEEDS ONLY)
--- =============================================================================
-
--- 1) SUMMARY QUERY (single-row KPI block)
+-- 1) Summary KPI block 
 SELECT
     COUNT(*) AS total_requests,
     ROUND(AVG(exec_sec), 3) AS avg_latency_sec,
@@ -13,15 +9,13 @@ SELECT
     ROUND(AVG(is_not_found) * 100, 2) AS not_found_rate_pct,
     ROUND(AVG(is_sla_breach) * 100, 2) AS sla_breach_rate_pct,
     ROUND(
-        (
-            (AVG(is_success) * 0.50) +
-            ((1 - AVG(is_error)) * 0.30) +
-            ((1 - AVG(is_sla_breach)) * 0.20)
-        ) * 100,
+        (AVG(is_success) * 50) +
+        ((1 - AVG(is_error)) * 30) +
+        ((1 - AVG(is_sla_breach)) * 20),
     2) AS health_score_pct
 FROM vw_system_logs_clean;
 
--- 2) TREND QUERY (daily dashboard line charts)
+-- 2) Daily trend for charts
 SELECT
     request_date,
     COUNT(*) AS total_requests,
@@ -32,7 +26,7 @@ FROM vw_system_logs_clean
 GROUP BY request_date
 ORDER BY request_date;
 
--- 3) ENDPOINT QUERY (top endpoint table)
+-- 3) Top endpoints table
 SELECT
     endpoint,
     COUNT(*) AS total_requests,

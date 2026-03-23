@@ -1,63 +1,47 @@
 USE performance_monitoring;
 
 -- =============================================================================
--- PRODUCTION PROOF: PERFORMANCE + QUALITY + BUSINESS IMPACT
+-- INTERMEDIATE PROOF QUERIES (EASY TO PRESENT)
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- A) PERFORMANCE OPTIMIZATION PROOF (EXPLAIN ANALYZE)
--- Purpose: demonstrate index impact with controlled before vs after runs.
+-- A) PERFORMANCE CHECKS
+-- Goal: show speed and load behavior in simple terms.
 -- -----------------------------------------------------------------------------
 
--- A1. Time-based analytics query (before index usage hint).
-EXPLAIN ANALYZE
+-- A1. Daily traffic and average latency for the last 7 days.
 SELECT
     DATE(`timestamp`) AS request_date,
     COUNT(*) AS total_requests,
     ROUND(AVG(execution_time) / 1000.0, 3) AS avg_latency_sec
-FROM system_logs IGNORE INDEX (idx_timestamp)
+FROM system_logs
 WHERE `timestamp` >= NOW() - INTERVAL 7 DAY
 GROUP BY DATE(`timestamp`)
 ORDER BY request_date;
 
--- A2. Time-based analytics query (after timestamp index usage hint).
-EXPLAIN ANALYZE
-SELECT
-    DATE(`timestamp`) AS request_date,
-    COUNT(*) AS total_requests,
-    ROUND(AVG(execution_time) / 1000.0, 3) AS avg_latency_sec
-FROM system_logs USE INDEX (idx_timestamp)
-WHERE `timestamp` >= NOW() - INTERVAL 7 DAY
-GROUP BY DATE(`timestamp`)
-ORDER BY request_date;
-
--- A3. Endpoint aggregation query (before endpoint index usage hint).
-EXPLAIN ANALYZE
+-- A2. Top 10 busy endpoints with average and max latency.
 SELECT
     endpoint,
     COUNT(*) AS total_requests,
-    ROUND(AVG(execution_time) / 1000.0, 3) AS avg_latency_sec
-FROM system_logs IGNORE INDEX (idx_endpoint)
+    ROUND(AVG(execution_time) / 1000.0, 3) AS avg_latency_sec,
+    ROUND(MAX(execution_time) / 1000.0, 3) AS max_latency_sec
+FROM system_logs
 GROUP BY endpoint
 ORDER BY total_requests DESC
 LIMIT 10;
 
--- A4. Endpoint aggregation query (after endpoint index usage hint).
-EXPLAIN ANALYZE
+-- A3. Hourly traffic pattern for quick capacity planning.
 SELECT
-    endpoint,
+    HOUR(`timestamp`) AS hour_of_day,
     COUNT(*) AS total_requests,
     ROUND(AVG(execution_time) / 1000.0, 3) AS avg_latency_sec
-FROM system_logs USE INDEX (idx_endpoint)
-GROUP BY endpoint
-ORDER BY total_requests DESC
-LIMIT 10;
-
--- Review EXPLAIN ANALYZE output for reduced rows examined and lower execution time.
+FROM system_logs
+GROUP BY HOUR(`timestamp`)
+ORDER BY total_requests DESC, hour_of_day;
 
 -- -----------------------------------------------------------------------------
--- B) DATA QUALITY ENGINEERING CHECKS
--- Validation rules:
+-- B) DATA QUALITY CHECKS
+-- Rules:
 -- 1) status IN (200, 404, 500)
 -- 2) execution_time > 0
 -- 3) endpoint is not null/blank
@@ -71,7 +55,7 @@ SELECT
     SUM(CASE WHEN endpoint IS NULL OR TRIM(endpoint) = '' THEN 1 ELSE 0 END) AS invalid_endpoint_rows
 FROM system_logs;
 
--- B2. Rejected-log reason distribution (proof of captured invalid data reasons).
+-- B2. Rejected reason distribution.
 SELECT
     reason,
     COUNT(*) AS rejected_count,
@@ -80,7 +64,7 @@ FROM rejected_logs
 GROUP BY reason
 ORDER BY rejected_count DESC;
 
--- B3. Rejection accounting consistency vs ETL metrics.
+-- B3. ETL rejected rows vs rejected_logs count.
 SELECT
     COALESCE(SUM(rejected_rows), 0) AS etl_reported_rejected_rows,
     (SELECT COUNT(*) FROM rejected_logs) AS rejected_logs_rows,
@@ -88,11 +72,11 @@ SELECT
 FROM etl_metrics;
 
 -- -----------------------------------------------------------------------------
--- C) BUSINESS IMPACT LAYER
--- Purpose: translate technical metrics into user and business risk signals.
+-- C) BUSINESS IMPACT
+-- Goal: connect performance issues to user impact.
 -- -----------------------------------------------------------------------------
 
--- C1. Slowest endpoints impacting user experience.
+-- C1. Slow endpoints.
 SELECT
     endpoint,
     COUNT(*) AS total_requests,
@@ -105,7 +89,7 @@ HAVING COUNT(*) >= 10
 ORDER BY avg_latency_sec DESC, sla_breach_rate_pct DESC
 LIMIT 10;
 
--- C2. Highest-error endpoints impacting reliability.
+-- C2. High-error endpoints.
 SELECT
     endpoint,
     COUNT(*) AS total_requests,
@@ -117,36 +101,14 @@ HAVING COUNT(*) >= 10
 ORDER BY error_rate_pct DESC, total_requests DESC
 LIMIT 10;
 
--- C3. Traffic spike candidates for capacity planning.
-WITH minute_traffic AS (
-    SELECT
-        minute_bucket,
-        COUNT(*) AS requests_per_minute
-    FROM vw_system_logs_clean
-    GROUP BY minute_bucket
-),
-scored AS (
-    SELECT
-        minute_bucket,
-        requests_per_minute,
-        AVG(requests_per_minute) OVER (
-            ORDER BY minute_bucket
-            ROWS BETWEEN 60 PRECEDING AND 1 PRECEDING
-        ) AS prior_60m_avg
-    FROM minute_traffic
-)
+-- C3. Minutes with heavy load (simple threshold).
 SELECT
     minute_bucket,
-    requests_per_minute,
-    ROUND(prior_60m_avg, 2) AS prior_60m_avg,
-    ROUND(
-        CASE
-            WHEN prior_60m_avg IS NULL OR prior_60m_avg = 0 THEN NULL
-            ELSE (requests_per_minute / prior_60m_avg)
-        END,
-    2) AS spike_multiplier
-FROM scored
-WHERE prior_60m_avg IS NOT NULL
-  AND requests_per_minute >= (prior_60m_avg * 1.5)
+    COUNT(*) AS requests_per_minute,
+    ROUND(AVG(exec_sec), 3) AS avg_latency_sec,
+    ROUND(AVG(is_error) * 100, 2) AS error_rate_pct
+FROM vw_system_logs_clean
+GROUP BY minute_bucket
+HAVING COUNT(*) >= 20
 ORDER BY minute_bucket DESC
 LIMIT 120;

@@ -1,10 +1,10 @@
 USE performance_monitoring;
 
 -- =============================================================================
--- PRODUCTION OPERATIONS: ALERTING + PIPELINE MONITORING
+-- OPERATIONS CHECKS (INTERMEDIATE AND EASY TO READ)
 -- =============================================================================
 
--- Ensure alert sink exists for operational automation.
+-- Create alerts table if it does not exist.
 CREATE TABLE IF NOT EXISTS alerts (
     alert_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     endpoint VARCHAR(255),
@@ -14,33 +14,14 @@ CREATE TABLE IF NOT EXISTS alerts (
     alert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optional helper index for alert triage dashboards (idempotent creation).
-SET @idx_exists := (
-    SELECT COUNT(*)
-    FROM information_schema.statistics
-    WHERE table_schema = DATABASE()
-      AND table_name = 'alerts'
-      AND index_name = 'idx_alert_time_severity'
-);
-
-SET @idx_sql := IF(
-    @idx_exists = 0,
-    'CREATE INDEX idx_alert_time_severity ON alerts(alert_time, severity)',
-    'SELECT ''idx_alert_time_severity already exists'''
-);
-
-PREPARE stmt_idx FROM @idx_sql;
-EXECUTE stmt_idx;
-DEALLOCATE PREPARE stmt_idx;
-
 -- -----------------------------------------------------------------------------
 -- SYSTEM HEALTH CHECK PROCEDURE
--- Threshold logic:
+-- Thresholds:
 -- 1) error_rate_pct > 5
 -- 2) avg_latency_sec > 1
 -- 3) sla_breach_rate_pct > 10
--- Window: last 60 minutes
--- Severity Levels:
+-- Time window: last 60 minutes
+-- Severity:
 -- HIGH: Immediate action required
 -- MEDIUM: Monitor closely
 -- INFO: Informational
@@ -116,13 +97,12 @@ END $$
 
 DELIMITER ;
 
--- Run ad-hoc health check manually when needed:
+-- Run this manually when needed:
 -- CALL sp_system_health_check();
 
 -- -----------------------------------------------------------------------------
--- PIPELINE ROBUSTNESS MONITORING
--- This query is scheduler-friendly for cron/airflow/DB event jobs.
--- Recommended cadence: every 5-10 minutes.
+-- PIPELINE STATUS CHECK
+-- Use this in scheduler jobs (every 5-10 minutes).
 -- -----------------------------------------------------------------------------
 SELECT
     MAX(load_time) AS last_etl_run_time,
@@ -135,16 +115,13 @@ SELECT
     END AS pipeline_status
 FROM etl_metrics;
 
--- Optional MySQL event scheduler approach (enable only if DBA policy allows):
+-- Optional event scheduler approach:
 -- SET GLOBAL event_scheduler = ON;
 -- CREATE EVENT IF NOT EXISTS ev_system_health_check
 -- ON SCHEDULE EVERY 5 MINUTE
 -- DO CALL sp_system_health_check();
 
 -- =============================================================================
--- FINAL STORY (INTERVIEW-READY SYSTEM NARRATIVE)
--- Logs -> ETL -> vw_system_logs_clean -> Analytics/KPIs -> Dashboard -> Alerts.
--- Data is standardized once in the view, reused across all SQL layers, monitored
--- via ETL delay checks, and protected by deduplicated health alerts to avoid
--- operational noise while preserving actionable incident signals.
+-- FLOW SUMMARY
+-- Logs -> ETL -> cleaned view -> analytics -> dashboard -> alerts.
 -- =============================================================================

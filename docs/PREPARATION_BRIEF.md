@@ -70,7 +70,7 @@ In `etl_metrics`:
 
 ## 7) SQL File-by-File: What Query Is What
 
-### A) `sql/schema.sql`
+### A) `sql/00_schema.sql`
 Purpose: Create database, tables, constraints, indexes, and archive procedure.
 
 What to highlight:
@@ -78,7 +78,7 @@ What to highlight:
 - Indexes on timestamp, endpoint, status, etl_run_id improve analytics speed.
 - Procedure `sp_archive_old_system_logs()` moves data older than 90 days to archive table.
 
-### B) `sql/reset.sql`
+### B) `sql/07_reset.sql`
 Purpose: Reset all analytical tables and optionally reload clean CSV into `system_logs`.
 
 What to highlight:
@@ -86,7 +86,7 @@ What to highlight:
 - Truncates alerts, configs, rejected, archive, system logs, ETL metrics.
 - Uses `LOAD DATA LOCAL INFILE` to bulk load cleaned logs CSV.
 
-### C) `sql/basic.sql` (16 practical queries)
+### C) `sql/01_basic.sql` (16 practical queries)
 1. Total Requests -> "How many total API calls did we handle?"
 2. Success Rate % -> "What percent returned HTTP 200?"
 3. Error Rate % -> "What percent returned HTTP 500?"
@@ -104,7 +104,7 @@ What to highlight:
 15. Endpoint Error Rate -> "Which endpoint fails more"
 16. SLA Breach Rate (>0.5s) -> "Endpoint-wise SLA non-compliance"
 
-### D) `sql/advanced.sql` (8 advanced queries)
+### D) `sql/04_advanced.sql` (8 advanced queries)
 1. Latency Distribution -> bucket as Excellent/Good/Moderate/Slow
 2. Global P95 Latency -> tail performance indicator
 3. Global P99 Latency -> extreme tail latency
@@ -114,7 +114,7 @@ What to highlight:
 7. Rejected Distribution -> data quality issue share by reason
 8. Traffic + Error by Hour -> hour-wise traffic, errors, error rate, avg latency
 
-### E) `sql/kpi.sql` (4 KPI/quality queries)
+### E) `sql/02_kpi.sql` (4 KPI/quality queries)
 1. ETL Inserted vs Rejected % -> pipeline quality
 2. Rejected Data by Reason -> dominant data issue
 3. ETL Freshness -> staleness in minutes since last load
@@ -125,7 +125,7 @@ Health score formula:
 - 30% inverse error contribution
 - 20% inverse SLA-breach contribution
 
-### F) `sql/dashboard.sql`
+### F) `sql/05_dashboard.sql`
 Purpose: Final dashboard-ready output script (summary, trend, endpoint).
 
 What to highlight:
@@ -290,7 +290,7 @@ pip install pandas mysql-connector-python
 2. Run schema script:
 
 ```sql
-source sql/schema.sql;
+source sql/00_schema.sql;
 ```
 
 This creates all required tables, indexes, and the archive procedure.
@@ -316,14 +316,14 @@ Stop safely with CTRL+C.
 
 ### D) Run Analytics Queries
 Use MySQL client and execute in this order:
-1. Optional reset: sql/reset.sql (run only when simulator is stopped)
-2. Build reusable layer: sql/views.sql
-3. Basic analytics: sql/basic.sql
-4. KPI analytics: sql/kpi.sql
-5. Advanced analytics: sql/advanced.sql
+1. Optional reset: sql/07_reset.sql (run only when simulator is stopped)
+2. Build reusable layer: sql/03_views.sql
+3. Basic analytics: sql/01_basic.sql
+4. KPI analytics: sql/02_kpi.sql
+5. Advanced analytics: sql/04_advanced.sql
 
 Alternative single run:
-- sql/dashboard.sql
+- sql/05_dashboard.sql
 
 ### E) Build/Refresh Dashboard
 In your BI tool:
@@ -351,9 +351,9 @@ WHERE e.run_id IS NULL;
 ```
 
 Then execute:
-- sql/basic.sql
-- sql/advanced.sql
-- sql/kpi.sql
+- sql/01_basic.sql
+- sql/04_advanced.sql
+- sql/02_kpi.sql
 
 Expected highlights:
 - Scripts execute without errors

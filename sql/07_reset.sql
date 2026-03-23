@@ -1,6 +1,5 @@
 USE performance_monitoring;
 
-
 SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE alerts;
@@ -12,11 +11,9 @@ TRUNCATE TABLE etl_metrics;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- =============================================================================
--- RELOAD CLEAN DATA FROM CSV
--- =============================================================================
 SET GLOBAL local_infile = 1 ;
 SHOW GLOBAL VARIABLES LIKE 'local_infile';
+
 LOAD DATA LOCAL INFILE 'D:/SQL_PROJECT/data/processed/cleaned_logs.csv'
 INTO TABLE system_logs
 FIELDS TERMINATED BY ','
