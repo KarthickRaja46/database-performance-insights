@@ -1,10 +1,14 @@
 USE performance_monitoring;
+
+SELECT * FROM system_logs;
 -- =============================================================================
 -- BASIC ANALYTICS
 -- =============================================================================
 
 -- Total Requests
-SELECT COUNT(*) AS total_requests
+SELECT COUNT(
+
+*) AS total_requests
 FROM system_logs;
 
 -- Success Rate (%)

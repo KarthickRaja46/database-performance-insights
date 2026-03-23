@@ -1,5 +1,5 @@
 # =============================================================================
-# REAL-TIME LOG ETL SIMULATOR (FINAL PRODUCTION WITH DATA QUALITY)
+# REAL-TIME LOG ETL SIMULATOR 
 # =============================================================================
 
 import pandas as pd
@@ -67,9 +67,7 @@ def upsert_etl_metrics(run_id, total_rows, inserted_rows, rejected_rows):
 conn = get_connection()
 cursor = conn.cursor()
 
-# =============================================================================
-# 3. DATA DIRECTORY
-# =============================================================================
+
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -78,7 +76,7 @@ cleaned_csv = os.path.join(DATA_DIR, "cleaned_logs.csv")
 rejected_csv = os.path.join(DATA_DIR, "rejected_logs.csv")
 
 # =============================================================================
-# 4. HEADERS (FIX)
+# 4. HEADERS
 # =============================================================================
 RAW_COLUMNS = [
     "ip", "endpoint", "status", "timestamp",
@@ -127,9 +125,7 @@ ensure_csv_header(raw_csv, RAW_COLUMNS)
 ensure_csv_header(cleaned_csv, VALID_COLUMNS)
 ensure_csv_header(rejected_csv, REJECTED_COLUMNS)
 
-# =============================================================================
-# 5. HELPERS
-# =============================================================================
+
 def fix_timestamp(ts):
     return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
 
@@ -148,9 +144,7 @@ def safe_json(row):
         for k, v in row.items()
     }, default=str, allow_nan=False)
 
-# =============================================================================
-# USER PROFILES
-# =============================================================================
+
 USER_PROFILES = [
     {"ip_prefix": "10.0", "latency_ms": (80, 900)},
     {"ip_prefix": "172.16", "latency_ms": (50, 1200)},
@@ -192,9 +186,6 @@ def generate_log(profile):
         "joins_count": random.choice([None, random.randint(1, 5)])
     }
 
-# =============================================================================
-# 6. INIT
-# =============================================================================
 run_id = str(uuid.uuid4())
 
 valid_buffer = []
@@ -208,9 +199,6 @@ total = inserted = rejected = 0
 print("🚀 Live stream started (CTRL+C to stop)")
 ensure_etl_parent(run_id)
 
-# =============================================================================
-# 7. MAIN LOOP
-# =============================================================================
 try:
     while True:
         try:
@@ -249,9 +237,7 @@ try:
 
             print(f"Inserted {cycle_inserted} rows")
 
-            # =============================================================================
-            # BATCH INSERTS
-            # =============================================================================
+            
             if len(valid_buffer) >= 20:
                 cursor.executemany("""
                     INSERT INTO system_logs
@@ -273,7 +259,7 @@ try:
                 conn.commit()
 
             # =============================================================================
-            # CSV BATCH WRITE (NO HEADER DUPLICATION)
+            # CSV BATCH WRITE
             # =============================================================================
             if len(csv_raw_buffer) >= 25:
                 pd.DataFrame(csv_raw_buffer)[RAW_COLUMNS].to_csv(
