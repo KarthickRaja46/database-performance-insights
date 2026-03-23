@@ -86,39 +86,25 @@ What to highlight:
 - Truncates alerts, configs, rejected, archive, system logs, ETL metrics.
 - Uses `LOAD DATA LOCAL INFILE` to bulk load cleaned logs CSV.
 
-### C) `sql/01_basic.sql` (16 practical queries)
+### C) `sql/01_basic.sql` (3 practical queries)
 1. Total Requests -> "How many total API calls did we handle?"
-2. Success Rate % -> "What percent returned HTTP 200?"
-3. Error Rate % -> "What percent returned HTTP 500?"
-4. Not Found Rate % -> "What percent returned HTTP 404?"
-5. Average Response Time (sec) -> "How fast is system on average?"
-6. Slow Requests (>1s) -> "How many requests are user-visible slow?"
-7. Daily Average Latency -> "How latency changes day by day?"
-8. Requests Per Minute -> "Traffic intensity each minute"
-9. Peak Minute Traffic -> "Most loaded minute"
-10. Hourly Error Rate -> "At which hour failures rise?"
-11. Daily Status Trend -> "Daily volume split by status"
-12. Top Endpoints -> "Most used APIs"
-13. Top Slow Endpoints -> "Endpoints with slow behavior"
-14. Endpoint Latency Summary -> "Avg and max latency by endpoint"
-15. Endpoint Error Rate -> "Which endpoint fails more"
-16. SLA Breach Rate (>0.5s) -> "Endpoint-wise SLA non-compliance"
+2. Average Latency (sec) -> "How fast is system on average?"
+3. Total Error Requests -> "How many requests failed with server error logic?"
 
-### D) `sql/04_advanced.sql` (8 advanced queries)
+### D) `sql/04_advanced.sql` (5 intermediate queries)
 1. Latency Distribution -> bucket as Excellent/Good/Moderate/Slow
-2. Global P95 Latency -> tail performance indicator
-3. Global P99 Latency -> extreme tail latency
-4. Endpoint P95 -> per-endpoint tail latency
-5. Endpoint P99 -> per-endpoint worst tail
-6. Endpoint Risk Mix -> combined error + SLA profile by endpoint
-7. Rejected Distribution -> data quality issue share by reason
-8. Traffic + Error by Hour -> hour-wise traffic, errors, error rate, avg latency
+2. Daily Trend -> request count, average latency, and error rate by date
+3. Endpoint Summary -> traffic, avg/max latency, error rate, SLA breach rate
+4. Endpoint Risk Score -> weighted risk by error + SLA + latency pressure
+5. Peak Traffic Hours -> busiest hours with error rate and average latency
 
-### E) `sql/02_kpi.sql` (4 KPI/quality queries)
-1. ETL Inserted vs Rejected % -> pipeline quality
-2. Rejected Data by Reason -> dominant data issue
-3. ETL Freshness -> staleness in minutes since last load
-4. Overall System Health Score -> weighted health metric
+### E) `sql/02_kpi.sql` (6 KPI/quality queries)
+1. Success Rate
+2. Error Rate
+3. SLA Breach Rate
+4. ETL Inserted vs Rejected % -> pipeline quality
+5. ETL Freshness -> staleness in minutes since last load
+6. Overall System Health Score -> weighted health metric
 
 Health score formula:
 - 50% success contribution
@@ -132,6 +118,13 @@ What to highlight:
 - Exactly three dashboard feeds for BI use.
 - Uses centralized cleaned view instead of repeated CASE logic.
 - Keeps dashboard consumption layer isolated from advanced exploration.
+
+Total core analytics queries:
+- Basic: 3
+- KPI: 6
+- Advanced: 5
+- Dashboard: 3
+- **Total = 17 queries**
 
 ## 8) Dashboard Mapping (Visual to Query Logic)
 For a dashboard like your screenshot:
@@ -159,7 +152,7 @@ Rejected logs prove data governance maturity:
 3. Explain schema and constraints: valid data protected at app and DB level.
 4. Show KPI cards: volume, reliability, speed, SLA.
 5. Drill down by endpoint and hour to show bottlenecks.
-6. Show advanced metrics: P95/P99 and risk scoring.
+6. Show advanced metrics: latency buckets, endpoint summary, and risk scoring.
 7. End with governance: rejected reason analysis + ETL freshness + health score.
 
 ## 11) Common Viva/Interview Questions and Short Answers
@@ -172,8 +165,8 @@ A: For auditability, debugging, and quality trend tracking without polluting tru
 Q3. Why use both app validation and DB constraints?
 A: Defense in depth. App catches most issues early; DB guarantees integrity if app logic misses something.
 
-Q4. Why P95/P99 instead of only average?
-A: Average hides long-tail latency. P95/P99 reveal worst user experience segments.
+Q4. Why not rely only on average latency?
+A: Average can hide spikes. So we also track latency buckets, endpoint max latency, and SLA breach rate.
 
 Q5. What is etl_run_id used for?
 A: Traceability: link each accepted/rejected row to a specific ingestion run.
@@ -199,7 +192,7 @@ Valid records are inserted into system_logs and also written to data/processed/c
 
 At the same time, ETL run metrics are tracked in etl_metrics, including total rows, inserted rows, rejected rows, and load time. So we can measure both system performance and pipeline health.
 
-For analytics, I divided SQL into basic, advanced, and KPI scripts. Basic analytics includes total requests, success rate, error rate, not-found rate, average latency, endpoint trends, and SLA breach rate. Advanced analytics adds P95 and P99 latency, risk mix by endpoint, rejected-data distribution, and traffic plus error behavior by hour. KPI analytics focuses on ETL quality, freshness, and a weighted system health score.
+For analytics, I divided SQL into basic, advanced, and KPI scripts. Basic analytics covers total requests, average latency, and error requests. Advanced analytics adds latency buckets, daily trend, endpoint summary, endpoint risk scoring, and peak hour behavior. KPI analytics focuses on success/error/SLA rates, ETL quality, freshness, and a weighted system health score.
 
 On the dashboard, top KPI cards summarize volume, reliability, speed, and SLA compliance. Then charts provide drill-down by hour, minute, endpoint, and status mix. This helps identify bottlenecks quickly.
 
@@ -224,7 +217,7 @@ Overall, the project demonstrates full-cycle implementation: data simulation, va
 ### C) Key Thresholds
 - SLA threshold = 0.5 sec
 - Slow request example threshold = 1.0 sec
-- Tail latency focus = P95, P99
+- Risk focus = endpoint error + SLA breach + latency pressure
 
 ### D) Health Score Weights
 - 50% Success rate
@@ -232,8 +225,8 @@ Overall, the project demonstrates full-cycle implementation: data simulation, va
 - 20% Inverse SLA breach rate
 
 ### E) 10-Second Definitions
-- P95 latency: latency below which 95% of requests complete
-- P99 latency: latency below which 99% of requests complete
+- Latency bucket: performance class (Excellent/Good/Moderate/Slow)
+- Endpoint risk score: weighted severity for endpoint prioritization
 - Rejected logs: invalid rows captured with reason for quality auditing
 - ETL freshness: minutes since latest load_time
 
@@ -270,7 +263,7 @@ I used both application-level validation and database constraints for defense in
 - They support root-cause exploration during analysis.
 
 ## 17) 60-Second Backup Script (If Time Is Very Short)
-This project simulates API logs and builds a complete monitoring pipeline. Logs are generated in real time, validated, and split into clean and rejected paths. Clean data is stored in system_logs for analytics, while bad rows are stored in rejected_logs with reasons for auditability. ETL metrics track insertion quality and freshness. SQL scripts are divided into basic, advanced, and KPI analytics, including latency, success and error rates, SLA breach, P95/P99 tail latency, and endpoint risk. The dashboard summarizes these as KPI cards and drill-down visuals by time and endpoint. The result is an end-to-end, production-style observability workflow.
+This project simulates API logs and builds a complete monitoring pipeline. Logs are generated in real time, validated, and split into clean and rejected paths. Clean data is stored in system_logs for analytics, while bad rows are stored in rejected_logs with reasons for auditability. ETL metrics track insertion quality and freshness. SQL scripts are divided into basic, advanced, and KPI analytics, including latency, success and error rates, SLA breach, latency buckets, and endpoint risk. The dashboard summarizes these as KPI cards and drill-down visuals by time and endpoint. The result is an end-to-end, production-style observability workflow.
 
 ## 18) How to Run the Project (Step-by-Step)
 
@@ -372,7 +365,7 @@ Best answer: I implemented two layers of protection: Python validation before in
 Best answer: Rejected records are critical for governance and root-cause analysis. They let us quantify quality issues and continuously improve upstream producers.
 
 4. Why is average latency not enough?
-Best answer: Averages hide long-tail pain. P95 and P99 reveal worst-case user experience, which is often where incidents and SLA breaches occur.
+Best answer: Averages can hide spikes. I complement them with latency buckets, max latency, and SLA breach rate for better incident visibility.
 
 5. Why use etl_run_id in both accepted and rejected flows?
 Best answer: It gives end-to-end lineage. We can trace exactly which run produced which clean and rejected records, making audits and debugging much faster.
@@ -412,8 +405,8 @@ A: Hourly shows broader load patterns, while minute-level reveals short spikes a
 6. Q: How do you identify problematic endpoints?
 A: I use endpoint error rate, endpoint SLA breach rate, top slow endpoint lists, and advanced endpoint risk scoring that combines these dimensions.
 
-7. Q: What insights do P95 and P99 add over average latency?
-A: They capture tail latency. Even with good average, poor P95/P99 indicates a meaningful subset of users still faces slow experiences.
+7. Q: What insights beyond average latency do you track?
+A: I track latency buckets, endpoint max latency, and SLA breach rate. Even with a good average, these metrics expose hidden hotspots.
 
 8. Q: What evidence shows your ETL is healthy?
 A: High inserted percentage, low rejected percentage, acceptable freshness (low minutes since last load), and stable rejection reasons over time.
@@ -451,7 +444,7 @@ Answer: 404 often indicates routing or client-side path issues, while 500 indica
 Answer: It represents a practical responsiveness target for this project, and we consistently use it across KPI and endpoint-level analyses.
 
 9. Question: Why not rely only on average latency?
-Answer: Average can hide slow tail behavior; P95 and P99 expose worst-case user experience and are better early warning indicators.
+Answer: Average can hide spikes. Bucket distribution, max latency, and SLA breach rate are better early warning indicators.
 
 10. Question: What does endpoint risk score represent?
 Answer: It is a weighted severity index combining error rate, SLA breach rate, and latency pressure to prioritize endpoints for optimization.
@@ -492,7 +485,7 @@ Answer: I would add scheduled orchestration, alert automation, partitioning, rol
 - Error and not-found rates suggest endpoint-level debugging and contract validation are required.
 
 ### Action Plan Based on BI Results
-1. Prioritize endpoint tuning using risk score and P95/P99 latency.
+1. Prioritize endpoint tuning using risk score, SLA breach, and max latency.
 2. Reduce SLA breaches with query optimization and caching for hot endpoints.
 3. Investigate status-code outliers by endpoint and hour bucket.
 4. Track week-over-week trend using the same KPI card set for measurable improvement.

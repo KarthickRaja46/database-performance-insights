@@ -5,6 +5,13 @@ This project is an end-to-end API observability pipeline using Python, MySQL, SQ
 It simulates live logs, validates data quality, stores clean and rejected records separately, and produces KPI plus advanced performance insights.
 Goal: monitor reliability, latency, SLA compliance, and ETL quality in one workflow.
 
+Current query count:
+- Basic (`sql/01_basic.sql`): 3
+- KPI (`sql/02_kpi.sql`): 6
+- Advanced (`sql/04_advanced.sql`): 5
+- Dashboard (`sql/05_dashboard.sql`): 3
+- Total core analytics queries: **17**
+
 ## 2) Speak This Flow (Core Story)
 1. Generate logs in scripts/log_simulator.py.
 2. Save all raw records to data/raw/log.csv.
@@ -38,10 +45,10 @@ Current sample values:
 - Traffic is healthy in volume, but bursty by minute.
 - Reliability is moderate, not excellent yet.
 - SLA breach is high, so latency optimization is priority one.
-- Endpoint-level risk and P95/P99 guide where to optimize first.
+- Endpoint-level risk, max latency, and SLA breach guide where to optimize first.
 
 ## 6) Must-Mention Advanced Points
-- Average latency is not enough; P95/P99 expose tail pain.
+- Average latency is not enough; latency buckets + max latency + SLA breach expose hidden pain.
 - Rejected logs are not deleted; they are audited for governance.
 - Defense-in-depth quality: Python validation + DB constraints.
 - Orphan check ensures rejected rows map to valid ETL run.
@@ -56,8 +63,8 @@ Controlled, repeatable testing without production data risk.
 2. Why rejected table?  
 For auditability, root-cause analysis, and quality improvement.
 
-3. Why P95/P99?  
-They capture tail latency that averages hide.
+3. Why not only average latency?  
+Average can hide spikes, so we also track latency buckets, max latency, and SLA breaches.
 
 4. Why both app and DB validation?  
 To catch errors early and still guarantee storage integrity.
