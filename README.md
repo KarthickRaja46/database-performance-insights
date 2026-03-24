@@ -215,7 +215,7 @@ SQL_PROJECT/
 
 ## 👨‍💻 Author
 
-**Karthick Raja**
+**Karthick Raja** ||
 Data Analyst specializing in SQL, ETL pipelines, and performance analytics
 
 ---
